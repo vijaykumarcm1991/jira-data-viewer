@@ -45,6 +45,7 @@ class ReportIn(BaseModel):
     schedule_cron: str = Field(..., min_length=1)
     selected_fields: list[str] = Field(..., min_length=1)
     is_active: bool = True
+    history_retention_days: int = 0  # 0 = keep latest per key only
 
 
 class ReportOut(BaseModel):
@@ -57,6 +58,7 @@ class ReportOut(BaseModel):
     schedule_cron: str
     selected_fields: list[str]
     is_active: bool
+    history_retention_days: int = 0
     last_run_at: datetime | None
     last_run_status: str | None
     last_error: str | None
@@ -70,6 +72,7 @@ class ReportUpdate(BaseModel):
     schedule_cron: str | None = None
     selected_fields: list[str] | None = None
     is_active: bool | None = None
+    history_retention_days: int | None = None
 
 
 # ---- Run history ----

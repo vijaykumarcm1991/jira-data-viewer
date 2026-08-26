@@ -101,6 +101,7 @@ class Report(Base):
     schedule_cron = Column(String(64), nullable=False)
     selected_fields = Column(JSON, nullable=False)  # ordered list[str] of Jira field ids
     is_active = Column(Boolean, nullable=False, default=True)
+    history_retention_days = Column(Integer, nullable=False, default=0)  # 0 = dedup only, keep latest per key
     last_run_at = Column(DateTime, nullable=True)
     last_run_status = Column(String(32), nullable=True)
     last_error = Column(Text, nullable=True)

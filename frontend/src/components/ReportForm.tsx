@@ -43,6 +43,7 @@ export function ReportForm({ mode }: Props) {
   const [cron, setCron] = useState("0 2 * * *");
   const [selected, setSelected] = useState<string[]>([]);
   const [isActive, setIsActive] = useState(true);
+  const [historyRetentionDays, setHistoryRetentionDays] = useState<number>(0);
 
   // For create mode the user picks the instance; for edit we lock it to the existing one.
   const instanceIdForFields = mode === "create" ? jiraInstanceId : String(existing?.jira_instance_id ?? "");
@@ -64,6 +65,7 @@ export function ReportForm({ mode }: Props) {
       setCron(existing.schedule_cron);
       setSelected(existing.selected_fields || []);
       setIsActive(existing.is_active);
+      setHistoryRetentionDays(existing.history_retention_days ?? 0);
     }
   }, [mode, existing]);
 
@@ -95,6 +97,7 @@ export function ReportForm({ mode }: Props) {
         schedule_cron: cron,
         selected_fields: selected,
         is_active: isActive,
+        history_retention_days: historyRetentionDays,
       });
     },
     onSuccess: () => {

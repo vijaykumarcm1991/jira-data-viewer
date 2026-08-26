@@ -256,6 +256,10 @@ def update_report(report_id: int, payload: ReportUpdate, db: Session = Depends(g
         r.schedule_cron = payload.schedule_cron
     if payload.is_active is not None:
         r.is_active = payload.is_active
+    if payload.history_retention_days is not None:
+        if payload.history_retention_days < 0:
+            raise HTTPException(400, "history_retention_days must be >= 0")
+        r.history_retention_days = payload.history_retention_days
     db.commit()
     db.refresh(r)
     ensure_schema_matches_report(r)
@@ -296,6 +300,28 @@ def truncate_report(report_id: int, db: Session = Depends(get_db)):
     r.last_error = None
     db.commit()
     return {"status": "truncated", "report_id": report_id}
+
+
+@router.post("/reports/{report_id}/cleanup", status_code=200)
+def cleanup_report(report_id: int, db: Session = Depends(get_db)):
+    """Run the history-cleanup now: delete all non-latest rows for this report.
+
+    Honors the report's `history_retention_days` setting (0 = keep only the
+    latest per key, >0 = also delete non-latest rows older than that many days).
+    Returns the number of rows deleted.
+    """
+    from ..cleanup_service import cleanup_report_history
+
+    r = db.query(Report).get(report_id)
+    if not r:
+        raise HTTPException(404, "Report not found")
+    deleted = cleanup_report_history(db, r)
+    return {
+        "status": "ok",
+        "report_id": report_id,
+        "rows_deleted": deleted,
+        "retention_days": r.history_retention_days,
+    }
 
 
 @router.post("/reports/{report_id}/run-now", status_code=202)
@@ -379,6 +405,7 @@ def _report_to_dict(r: Report) -> dict[str, Any]:
         "schedule_cron": r.schedule_cron,
         "selected_fields": list(r.selected_fields or []),
         "is_active": r.is_active,
+        "history_retention_days": r.history_retention_days,
         "last_run_at": r.last_run_at,
         "last_run_status": r.last_run_status,
         "last_error": r.last_error,

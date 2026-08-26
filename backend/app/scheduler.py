@@ -87,3 +87,17 @@ def unschedule_report(report_id: int) -> None:
     job = _scheduler.get_job(f"report_{report_id}")
     if job:
         job.remove()
+
+
+def _weekly_cleanup() -> None:
+    """Run history cleanup for every active report. Runs Sundays 03:00 IST."""
+    from .cleanup_service import cleanup_all_reports
+    from .database import SessionLocal
+
+    log.info("Running weekly history cleanup")
+    with SessionLocal() as db:
+        results = cleanup_all_reports(db)
+    if results:
+        log.info("Weekly cleanup results: %s", results)
+    else:
+        log.info("Weekly cleanup: no active reports")

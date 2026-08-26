@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, Route, Routes, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Edit, Eraser, FilePlus, Loader2, Play, Square, Trash2 } from "lucide-react";
+import { Edit, Eraser, FilePlus, Loader2, Play, Sparkles, Square, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -65,6 +65,16 @@ function ReportsList() {
     },
     onError: (e: any) => toast.error(e?.response?.data?.detail || "Truncate failed"),
   });
+  const cleanup = useMutation({
+    mutationFn: (id: number) => api.post(`/admin/reports/${id}/cleanup`),
+    onSuccess: (r, id) => {
+      qc.invalidateQueries({ queryKey: ["reports"] });
+      toast.success(
+        `Cleanup complete for report #${id}: removed ${r.data.rows_deleted} duplicate row(s)`
+      );
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.detail || "Cleanup failed"),
+  });
   const cancelRun = useMutation({
     mutationFn: (runId: number) => api.post(`/admin/runs/${runId}/cancel`),
     onSuccess: (r, runId) => {
@@ -127,6 +137,11 @@ function ReportsList() {
                     <TableCell className="font-mono text-xs">{r.schedule_cron}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {r.selected_fields.length} fields
+                      {r.history_retention_days > 0 && (
+                        <span className="ml-2 text-xs px-1.5 py-0.5 rounded bg-secondary">
+                          keep {r.history_retention_days}d
+                        </span>
+                      )}
                     </TableCell>
                     <TableCell>
                       {r.last_run_at ? (
@@ -185,6 +200,20 @@ function ReportsList() {
                           title="Empty the data table (schema and view are kept)"
                         >
                           <Eraser className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            const msg = r.history_retention_days > 0
+                              ? `Remove duplicates and any non-latest rows older than ${r.history_retention_days} day(s) for "${r.name}"?`
+                              : `Remove duplicate rows (keep only the latest per key) for "${r.name}"?`;
+                            if (confirm(msg)) cleanup.mutate(r.id);
+                          }}
+                          disabled={cleanup.isPending}
+                          title="Run history cleanup now (honors the report's retention setting)"
+                        >
+                          <Sparkles className="h-4 w-4" />
                         </Button>
                         <Button
                           size="icon"

@@ -85,6 +85,19 @@ def _run_migrations() -> None:
                 "ALTER TABLE jira_instance_fields ADD COLUMN schema_custom VARCHAR(255) NULL"
             ))
 
+        # M2: reports.history_retention_days (added after the initial deploy).
+        if conn.dialect.name == "sqlite":
+            report_cols = {row[1] for row in conn.execute(text("PRAGMA table_info(reports)")).fetchall()}
+        else:
+            report_cols = {row[0] for row in conn.execute(text(
+                "SELECT COLUMN_NAME FROM information_schema.COLUMNS "
+                "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'reports'"
+            )).fetchall()}
+        if "history_retention_days" not in report_cols:
+            conn.execute(text(
+                "ALTER TABLE reports ADD COLUMN history_retention_days INT NOT NULL DEFAULT 0"
+            ))
+
 
 def _ensure_admin_user() -> None:
     """Sync the single admin user from .env into the admin_user table.
